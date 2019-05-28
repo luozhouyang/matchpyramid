@@ -1,0 +1,2 @@
+tensorflow==2.0.0a
+easylib==0.0.5
