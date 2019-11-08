@@ -16,7 +16,7 @@ Implemented matching matrix methods:
 ## Requirements
 
 ```bash
-tensorflow==2.0.0a
+tensorflow==2.0.0
 easylib==0.0.5
 
 ```

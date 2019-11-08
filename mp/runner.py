@@ -15,67 +15,32 @@
 import argparse
 import os
 
+import tensorflow as tf
 from easylib.dl import KerasModelDatasetRunner
+from nlp_datasets.abstract_dataset import AbstractXYDataset
+from nlp_datasets.tokenizers import SpaceTokenizer
+from nlp_datasets.xyz_dataset import XYZSameFileDataset
 
-from mp import datas
-from mp import models
-from mp import utils
+from mp import models, utils
 
-MODEL_DIR = '/tmp/matchpyramid'
-if not os.path.exists(MODEL_DIR):
-    os.makedirs(MODEL_DIR)
-
-
-def train(model):
-    r = KerasModelDatasetRunner(
-        model,
-        model_dir=MODEL_DIR,
-        model_name='mp',
-        logger_name='matchpyramid')
-    train_files = [os.path.join(utils.testdat_dir(), 'train.txt')]
-    valid_files = [os.path.join(utils.testdat_dir(), 'vocab.txt')]
-    train_dataset = datas.build_train_dataset(train_files, datas.dataset_config)
-    valid_dataset = datas.build_eval_dataset(valid_files, datas.dataset_config)
-    r.train(dataset=train_dataset, val_dataset=valid_dataset, ckpt=MODEL_DIR)
-
-
-def eval(model):
-    r = KerasModelDatasetRunner(
-        model,
-        model_dir=MODEL_DIR,
-        model_name='mp',
-        logger_name='matchpyramid')
-    test_files = []
-    test_dataset = datas.build_eval_dataset(test_files, datas.dataset_config)
-    r.eval(test_dataset, MODEL_DIR)
-
-
-def predict(model):
-    r = KerasModelDatasetRunner(
-        model,
-        model_dir=MODEL_DIR,
-        model_name='mp',
-        logger_name='matchpyramid')
-    predict_files = []
-    pred_dataset = datas.build_predict_dataset(predict_files, datas.dataset_config)
-    r.predict(pred_dataset)
-
-
-def export(model):
-    r = KerasModelDatasetRunner(
-        model,
-        model_dir=MODEL_DIR,
-        model_name='mp',
-        logger_name='matchpyramid')
-    p = ''
-    ckpt = None
-    r.export(path=p, ckpt=ckpt)
+tokenizer = SpaceTokenizer()
+tokenizer.build_from_vocab(os.path.join(utils.testdat_dir(), 'vocab.txt'))
+config = {
+    'x_max_len': 1000,
+    'y_max_len': 1000,
+    'train_batch_size': 1,
+    'predict_batch_size': 32,
+    'shuffle_size': -1,
+    'num_parallel_calls': tf.data.experimental.AUTOTUNE
+}
+dataset = XYZSameFileDataset(x_tokenizer=tokenizer, y_tokenizer=tokenizer, config=config)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('model', choices=['indicator', 'dot', 'cosine'], default='indicator')
-    parser.add_argument('action', type=str, default='train', choices=['train', 'eval', 'predict', 'export'])
+    parser.add_argument('--model', choices=['indicator', 'dot', 'cosine'], default='indicator')
+    parser.add_argument('--action', type=str, default='train', choices=['train', 'eval', 'predict', 'export'])
+    parser.add_argument('--model_dir', type=str, default='/tmp/matchpyramid', help='File path to save model.')
 
     args, _ = parser.parse_known_args()
 
@@ -88,13 +53,29 @@ if __name__ == '__main__':
     else:
         raise ValueError('Invalid model: %s' % args.model)
 
+    runner = KerasModelDatasetRunner(
+        model=model,
+        model_name='mp',
+        model_dir=args.model_dir,
+        configs=None
+    )
+
     if args.action == 'train':
-        train(model)
+        train_files = [os.path.join(utils.testdat_dir(), 'train.txt')]
+        # use train files as validation files, not recommend in actual use
+        valid_files = [os.path.join(utils.testdat_dir(), 'train.txt')]
+        train_dataset = dataset.build_train_dataset(train_files)
+        valid_dataset = dataset.build_eval_dataset(valid_files)
+        runner.train(dataset=train_dataset, val_dataset=valid_dataset, ckpt=args.model_dir)
     elif args.action == 'eval':
-        eval(model)
+        eval_files = [os.path.join(utils.testdat_dir(), 'train.txt')]
+        eval_dataset = dataset.build_eval_dataset(eval_files)
+        runner.eval(dataset=eval_dataset)
     elif args.action == 'predict':
-        predict(model)
+        predict_files = [os.path.join(utils.testdat_dir(), 'train.txt')]
+        predict_dataset = dataset.build_predict_dataset(predict_files)
+        runner.predict(dataset=predict_dataset)
     elif args.action == 'export':
-        export(model)
+        runner.export(path=os.path.join(args.model_dir, 'export'), ckpt=None)
     else:
         raise ValueError('Invalid action: %s' % args.action)

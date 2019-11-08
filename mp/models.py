@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow.python import keras
+import tensorflow as tf
 
 from mp.indicator import Indicator
 
@@ -32,116 +32,116 @@ model_config = {
 
 def build_dot_model(config):
     """Using dot-product to produce match matrix, as described in the paper."""
-    q_input = keras.layers.Input(shape=(config['query_max_len'],), name='q_input')
-    d_input = keras.layers.Input(shape=(config['doc_max_len'],), name='d_input')
+    q_input = tf.keras.layers.Input(shape=(config['query_max_len'],), name='q_input')
+    d_input = tf.keras.layers.Input(shape=(config['doc_max_len'],), name='d_input')
 
-    embedding = keras.layers.Embedding(config['vocab_size'], config['embedding_size'], name='embedding')
+    embedding = tf.keras.layers.Embedding(config['vocab_size'], config['embedding_size'], name='embedding')
 
     q_embedding = embedding(q_input)
     d_embedding = embedding(d_input)
 
     # dot
-    dot = keras.layers.Dot(axes=-1, name='dot')([q_embedding, d_embedding])
+    dot = tf.keras.layers.Dot(axes=-1, name='dot')([q_embedding, d_embedding])
     # reshape to [batch_size, query_max_len, doc_max_len, channel(1)]
-    matrix = keras.layers.Reshape((config['query_max_len'], config['doc_max_len'], 1), name='matrix')(dot)
+    matrix = tf.keras.layers.Reshape((config['query_max_len'], config['doc_max_len'], 1), name='matrix')(dot)
 
     x = matrix
     for i in range(config['num_conv_layers']):
-        x = keras.layers.Conv2D(
+        x = tf.keras.layers.Conv2D(
             filters=config['filters'][i],
             kernel_size=config['kernel_size'][i],
             padding='same',
             activation='relu',
             name='conv_%d' % i)(x)
-        x = keras.layers.MaxPooling2D(pool_size=tuple(config['pool_size'][i]), name='max_pooling_%d' % i)(x)
-        x = keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=tuple(config['pool_size'][i]), name='max_pooling_%d' % i)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
 
-    flatten = keras.layers.Flatten()(x)
-    dense = keras.layers.Dense(32, activation='relu')(flatten)
-    out = keras.layers.Dense(1, activation='sigmoid', name='out')(dense)
+    flatten = tf.keras.layers.Flatten()(x)
+    dense = tf.keras.layers.Dense(32, activation='relu')(flatten)
+    out = tf.keras.layers.Dense(1, activation='sigmoid', name='out')(dense)
 
-    model = keras.Model(inputs=[q_input, d_input], outputs=[matrix, out])
+    model = tf.keras.Model(inputs=[q_input, d_input], outputs=[matrix, out])
     model.compile(
         loss={
             'out': 'binary_crossentropy'
         },
         optimizer='sgd',
         metrics={
-            'out': [keras.metrics.Accuracy(), keras.metrics.Recall(), keras.metrics.Precision()]
+            'out': [tf.keras.metrics.Accuracy(), tf.keras.metrics.Recall(), tf.keras.metrics.Precision()]
         })
     return model
 
 
 def build_cosine_model(config):
     """Using cosine to produce match matrix, as described in the paper."""
-    q_input = keras.layers.Input(shape=(config['query_max_len'],), name='q_input')
-    d_input = keras.layers.Input(shape=(config['doc_max_len'],), name='d_input')
+    q_input = tf.keras.layers.Input(shape=(config['query_max_len'],), name='q_input')
+    d_input = tf.keras.layers.Input(shape=(config['doc_max_len'],), name='d_input')
 
-    embedding = keras.layers.Embedding(config['vocab_size'], config['embedding_size'], name='embedding')
+    embedding = tf.keras.layers.Embedding(config['vocab_size'], config['embedding_size'], name='embedding')
 
     q_embedding = embedding(q_input)
     d_embedding = embedding(d_input)
 
     # cosine
-    cosine = keras.layers.Dot(axes=-1, normalize=True, name='cosine')([q_embedding, d_embedding])
-    matrix = keras.layers.Reshape((config['query_max_len'], config['doc_max_len'], 1), name='matrix')(cosine)
+    cosine = tf.keras.layers.Dot(axes=-1, normalize=True, name='cosine')([q_embedding, d_embedding])
+    matrix = tf.keras.layers.Reshape((config['query_max_len'], config['doc_max_len'], 1), name='matrix')(cosine)
 
     x = matrix
     for i in range(config['num_conv_layers']):
-        x = keras.layers.Conv2D(
+        x = tf.keras.layers.Conv2D(
             filters=config['filters'][i],
             kernel_size=config['kernel_size'][i],
             padding='same',
             activation='relu',
             name='conv_%d' % i)(x)
-        x = keras.layers.MaxPooling2D(pool_size=tuple(config['pool_size'][i]), name='max_pooling_%d' % i)(x)
-        x = keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=tuple(config['pool_size'][i]), name='max_pooling_%d' % i)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
 
-    flatten = keras.layers.Flatten()(x)
-    dense = keras.layers.Dense(32, activation='relu')(flatten)
-    out = keras.layers.Dense(1, activation='sigmoid', name='out')(dense)
+    flatten = tf.keras.layers.Flatten()(x)
+    dense = tf.keras.layers.Dense(32, activation='relu')(flatten)
+    out = tf.keras.layers.Dense(1, activation='sigmoid', name='out')(dense)
 
-    model = keras.Model(inputs=[q_input, d_input], outputs=[matrix, out])
+    model = tf.keras.Model(inputs=[q_input, d_input], outputs=[matrix, out])
     model.compile(
         loss={
             'out': 'binary_crossentropy'
         },
         optimizer='sgd',
         metrics={
-            'out': [keras.metrics.Accuracy(), keras.metrics.Recall(), keras.metrics.Precision()]
+            'out': [tf.keras.metrics.Accuracy(), tf.keras.metrics.Recall(), tf.keras.metrics.Precision()]
         })
     return model
 
 
 def build_indicator_model(config):
     """Using indicator fn to produce match matrix, as described in the paper."""
-    q_input = keras.layers.Input(shape=(config['query_max_len'],), name='q_input')
-    d_input = keras.layers.Input(shape=(config['doc_max_len'],), name='d_input')
+    q_input = tf.keras.layers.Input(shape=(config['query_max_len'],), name='q_input')
+    d_input = tf.keras.layers.Input(shape=(config['doc_max_len'],), name='d_input')
 
     m = Indicator(config['query_max_len'], config['doc_max_len'], name='matrix')((q_input, d_input))
-    m2 = keras.layers.Reshape((config['query_max_len'], config['doc_max_len'], 1), name='m2')(m)
+    m2 = tf.keras.layers.Reshape((config['query_max_len'], config['doc_max_len'], 1), name='m2')(m)
     x = m2
     for i in range(config['num_conv_layers']):
-        x = keras.layers.Conv2D(
+        x = tf.keras.layers.Conv2D(
             filters=config['filters'][i],
             kernel_size=config['kernel_size'][i],
             padding='same',
             activation='relu',
             name='conv_%d' % i)(x)
-        x = keras.layers.MaxPooling2D(pool_size=tuple(config['pool_size'][i]), name='max_pooling_%d' % i)(x)
-        x = keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.MaxPooling2D(pool_size=tuple(config['pool_size'][i]), name='max_pooling_%d' % i)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
 
-    flatten = keras.layers.Flatten()(x)
-    dense = keras.layers.Dense(32, activation='relu')(flatten)
-    out = keras.layers.Dense(1, activation='sigmoid', name='out')(dense)
+    flatten = tf.keras.layers.Flatten()(x)
+    dense = tf.keras.layers.Dense(32, activation='relu')(flatten)
+    out = tf.keras.layers.Dense(1, activation='sigmoid', name='out')(dense)
 
-    model = keras.Model(inputs=[q_input, d_input], outputs=[out, m])
+    model = tf.keras.Model(inputs=[q_input, d_input], outputs=[out, m])
     model.compile(
         loss={
             'out': 'binary_crossentropy'
         },
         optimizer='sgd',
         metrics={
-            'out': [keras.metrics.Accuracy(), keras.metrics.Recall(), keras.metrics.Precision()]
+            'out': [tf.keras.metrics.Accuracy(), tf.keras.metrics.Recall(), tf.keras.metrics.Precision()]
         })
     return model

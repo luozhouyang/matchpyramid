@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import tensorflow as tf
-from tensorflow.python import keras
 
 
-class Indicator(keras.layers.Layer):
+class Indicator(tf.keras.layers.Layer):
     """Indicator function to produce match matrix. As described in paper https://arxiv.org/abs/1606.04648"""
 
     def __init__(self, width, height, **kwargs):
